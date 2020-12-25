@@ -1,0 +1,400 @@
+---
+title: "Facebook Data Analysis Report"
+author: 'Anil Kotyal'
+output:
+  html_document:
+    df_print: paged
+---
+
+# Objectives
+
+1)Find Out what factors should focus on in while posting on facebook to improve brand popularity and increase revenue.
+
+2)To find out best social media marketing strategy.
+
+# Importing required libraries:
+```{r}
+library(ggplot2)
+library(ggcorrplot)
+library(GGally)
+library(dplyr)
+library(plotly)
+```
+# Importing Dataset:
+```{r}
+Data=read.csv('C:/Users/ANIL/Downloads/dataset_Facebook.csv')
+```
+# Data Preprocessing & Cleaning
+i)Checking Null values and Remove it
+```{r}
+dim(Data)
+Nu=sum(is.na(Data));Nu
+```
+we see that 6 values are null.Hence We remove those values
+```{r}
+Data=na.omit(Data)
+sum(is.na(Data))
+```
+ii)Create Dummy variables for factor data
+```{r}
+Data['TypeN']=as.numeric(factor(Data$Type))
+Data['Class_Page']=as.numeric(factor(Data$Page.total.likes))
+DataN1=Data
+colnames(DataN1)=seq(1,ncol(DataN1),1) #change columns name
+DataN=subset(Data,select= -c(2))
+features=colnames(DataN);length(features)
+colnames(DataN)=seq(1,ncol(DataN),1) #change columns name
+```
+iii)Checking any Outlier is in Data
+```{r}
+boxplot(DataN,main='Facebook Data',xaxt='n',yaxt='n',col = 'blue')
+axis(2,at=seq(1,max(DataN),195500),labels=seq(1,max(DataN),195500))
+axis(1,at=seq(1,ncol(DataN)),las=3,labels = colnames(DataN))
+
+```
+Interpretation:
+1]we see that 8th variable i.e (Lifetime Post Total Impressions) and 12th variable i.e(Lifetime Post Impressions by people who have liked your Page) has outlier.Hence we remove that outlier.
+2)There are many methods are available to remove outlier,we use InterQuartile range 
+
+# Use the interquartile range.
+The interquartile range (IQR) is the difference between the 75th percentile (Q3) and the 25th percentile (Q1) in a dataset. It measures the spread of the middle 50% of values.
+
+we define an observation to be an outlier if it is 1.5 times the interquartile range greater than the third quartile (Q3) or 1.5 times the interquartile range less than the first quartile (Q1).
+
+Outliers = Observations > Q3 + 1.5*IQR  or < Q1 – 1.5*IQR
+
+```{r}
+Q=iqr=0
+dim(DataN)
+Q=quantile(DataN[,8], probs=c(.20, .80), na.rm = FALSE)
+iqr=IQR(DataN[,8])
+DataM=subset(DataN, DataN[,8] > (Q[1] - 1.5*iqr) & DataN[,8]< (Q[2]+1.5*iqr))
+Q=iqr=0
+dim(DataM)
+Q=quantile(DataM[,12], probs=c(.20, .80), na.rm = FALSE)
+iqr=IQR(DataM[,12])
+DataM=subset(DataM[,], DataM[,12] > (Q[1] - 1.5*iqr) & DataM[,12]< (Q[2]+1.5*iqr))
+dim(DataM)
+```
+# Correlation Matrix :
+```{r}
+corr <- round(cor(DataN), 1)
+# Plot
+ggcorrplot(corr, hc.order = TRUE, 
+           type = "lower", 
+           lab = TRUE, 
+           lab_size = 2, 
+           method="circle", 
+           colors = c("tomato2", "white", "springgreen3"), 
+           title="Correlogram of Facebook", 
+           ggtheme=theme_bw)
+
+```
+We see that variables between 8 to 18 are related to each other.
+
+# Towards Problem Statement:
+As social media Analyst we have to find out what factors are important while posting on facebook & Also we have to find out best strategies for marketing purpose.
+
+1)Towards that we first check out at which Month do you post in facebook so that we have reach maximum peoples with respect to variable,Total Interaction.(Total interaction=comment+like+share)
+```{r}
+df1=subset(DataN,select = c(3,4,5,13,18,8))
+df11=aggregate(df1$'18', by=list(df1$'3'), FUN=mean)
+colnames(df11)=c('Month','Avg.Total.Interaction')
+fig11 <- plot_ly(df11, labels = ~Month, values = ~Avg.Total.Interaction, type = 'pie')
+fig11 <- fig11 %>% layout(title = 'Avg Total Interaction by Month',
+                          xaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE),
+                          yaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE))
+
+fig11
+```
+Interpretation:
+1]we see that in 7 and 9th month approximately 11-13 % of people having maximum interaction.
+2]Hence we say that if any company had do social media marketing of their product to increase earnings they can do in either of Feb or April Month,so their adds can reach maximum peoples.
+
+
+2)Now we check which Weekday do you post in facebook so that we have reach maximum peoples with respect to variable,Total interaction
+```{r}
+df12=aggregate(df1$'18', by=list(df1$'4'), FUN=mean)
+weekday=c('SUN','MAN','TUE','WED','THRUD','FRID','SAT')
+df12$Group.1=c('SUN','MAN','TUE','WED','THRUS','FRI','SAT')
+colnames(df12)=c('Weekday','Avg.Total.Interaction')
+fig12 <- plot_ly(df12, labels = ~Weekday, values = ~Avg.Total.Interaction, type = 'pie',textinfo = 'label+percent')
+fig12 <- fig12 %>% layout(title = 'Avg Total Interaction by Weekday',
+                        xaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE),
+                        yaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE))
+
+fig12
+```
+Interpretation:
+1]we see that In Wednesday,Tuesday & Sunday there is approximately 16% of people having maximum interaction.
+2]Hence we say that if any company had do social media marketing of their product to increase earnings they can do in either of Wednesday or Tuesday or Sunday,so their adds can reach maximum peoples.
+
+
+3)Now we check which Hour do you post in facebook so that we have reach maximum peoples with respect to variable,Total interaction
+```{r}
+df13=aggregate(df1$'18', by=list(df1$'5'), FUN=mean)
+colnames(df13)=c('Hour','Avg.Total.Interaction')
+df13=arrange(df13,desc(Avg.Total.Interaction))
+df13$Hour[1:2]
+fig13 <- plot_ly(df13, labels = ~Hour, values = ~Avg.Total.Interaction, type = 'pie')
+fig13 <- fig13 %>% layout(title = 'Avg Total Interaction by Post Hour',
+                        xaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE),
+                        yaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE))
+
+fig13
+```
+Interpretation:
+1]In above pie chart we see that there is 17% peoples who having maximum interaction at 5 hour.
+2]Hence to reach maximum people and get maximum interaction we have to post our 'ad' at 5.
+
+
+4)Check Average Total impression with respect to Month
+```{r}
+df14=aggregate(df1$'8', by=list(df1$'3'), FUN=mean)
+colnames(df14)=c('Month','Avg.Total.Impression')
+fig14 <- plot_ly(df14, labels = ~Month, values = ~Avg.Total.Impression, type = 'pie',textinfo = 'label+percent')
+fig14 <- fig14 %>% layout(title = 'Avg Lifetime Post Total Impression by Month',
+                        xaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE),
+                        yaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE))
+
+fig14
+```
+Interpretation:
+1]Lifetime post total impression are the number of times content is displayed,no matter if it was clicked or not
+2]we see that in February month maximum percentage of content is displayed i.e is 22%.
+3]Hence it is good idea if company had post there 'ad' in month February.because we see that in February maximum traffic is present at facebook page.
+
+
+5)Check what type of posting having more traffic with respect to variable Lifetime People who have liked your Page and engaged with your post
+```{r}
+df2=subset(DataN1,select = c(2,19,15,8))
+df21=aggregate(df2$'15', by=list(df2$'2'), FUN=mean)
+colnames(df21)=c('Post.Type','Avglikes.Reach')
+fig21 <- plot_ly(df21, labels = ~Post.Type, values = ~Avglikes.Reach, type = 'pie',textinfo = 'label+percent')
+fig21 <- fig21 %>% layout(title = 'Lifetime.People.who.have.liked.your.Page.and.engaged.with.your.post by Post Type',
+                       xaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE),
+                       yaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE))
+
+fig21
+```
+Interpreation:
+1]we see that maximum percentage of peoples are interested towards 'status' and it is obvious because 'status' are vary short.hence more peoples are see such post.
+2]secondly,'Video' type post has 29% traffic.
+3]we see that 'link' type post has only 6% traffic.
+
+
+6)Check what type of posting having more traffic with respect to Total interaction
+```{r}
+df22=aggregate(df2$'19', by=list(df2$'2'), FUN=mean)
+colnames(df22)=c('Post.Type','Avg.Total.Interaction')
+fig22 <- plot_ly(df22, labels = ~Post.Type, values = ~Avg.Total.Interaction, type = 'pie',textinfo = 'label+percent')
+fig22 <- fig22 %>% layout(title = 'Avg Total Interaction by Post Type',
+                      xaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE),
+                      yaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE))
+
+fig22
+```
+Interpreation:
+1]we see that 'Video' Type having more interactions and 'link' Type having less interaction.
+2]we say that if company aim is to reach maximum interaction then they may be go with 'video' type post.
+
+
+7)Check what type of posting having more traffic with respect to  total impression
+```{r}
+df23=aggregate(df2$'8', by=list(df2$'2'), FUN=mean)
+colnames(df23)=c('Post.Type','Avg.Total.Impression')
+library(plotly)
+fig23 <- plot_ly(df23, labels = ~Post.Type, values = ~Avg.Total.Impression, type = 'pie',textinfo = 'label+percent')
+fig23 <- fig23 %>% layout(title = 'Avg Lifetime Post Total Impression by Post Type',
+                      xaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE),
+                      yaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE))
+
+fig23
+```
+Interpreation:
+1]we see that 'Video' Type post having more impression and 'status' Type having less Impression.
+2]we say that if company aim is to reach maximum impression then they may be go with 'video' type post.
+
+
+8)Checking which page has more traffic and engeggement
+Here we consider data without removing outliers
+```{r}
+df3=subset(DataN,select= c(1,18))
+
+#
+df31=aggregate(df3$'18',by=list(as.character(df3$'1')),FUN=mean)
+colnames(df31)=c('Page.Total.likes','Avg.Total.Interaction')
+df31=arrange(df31,desc(Avg.Total.Interaction))
+fig31 <- plot_ly(df31[1:10,], x = ~Page.Total.likes, y = ~Avg.Total.Interaction, type = 'bar', name = 'Avg.Total.Interaction', marker = list(color = 'rgb(49,130,189)'))
+fig31 <- fig31 %>% layout(title='Page.Total.likes Vs Avg.Total.Interaction',xaxis = list(title = "", tickangle = -45),
+                      yaxis = list(title = ""),
+                      margin = list(b = 100),
+                      barmode = 'group')
+
+fig31
+```
+Interpretation:
+1]We see that page '92507' Having maximum interaction.Hence we say that,the peoples who likes the page '92507' they having maximum interaction.
+2]Hence to reach maximum interaction we should prefer the page '92507'
+
+
+9)8)Checking which page has more lifetime post consumption
+Here we consider data after removing outliers
+```{r}
+df3=subset(DataM,select= c(1,14,11))
+df32=aggregate(df3$'11',by=list(as.character(df3$'1')),FUN=mean)
+colnames(df32)=c('Page.Total.likes','Avg.Lifetime.Post.Consumptions')
+df32=arrange(df32,desc(Avg.Lifetime.Post.Consumptions))
+fig32 <- plot_ly(df32[1:10,], x = ~Page.Total.likes, y = ~Avg.Lifetime.Post.Consumptions, type = 'bar', name = 'Avg.Lifetime.Post.Consumptions', marker = list(color = 'rgb(49,130,189)'))
+fig32 <- fig32 %>% layout(title='Page.Total.likes Vs Lifetime.Post.Consumptions',xaxis = list(title = "", tickangle = -45),
+                          yaxis = list(title = ""),
+                          margin = list(b = 100),
+                          barmode = 'group')
+
+fig32
+```
+Interpretation:
+1]Here if we remove the outlies from data then we see that page '126345' having maximum post consumption.That means who likes the page '126345' they having generating more traffic.
+2]To reach maximum peoples we may use this page.
+
+10)Checking Which Page Has more likes,shares,comment
+```{r}
+Sub_pie=function(Dat='Dataframe'){
+  df4=subset(Dat,select= c(1,15,16,17))
+  d1=aggregate(df4$'15',by=list(as.character(df4$'1')),FUN=mean)
+  colnames(d1)=c('Page.Total.likes','Avg.Comment')
+  d1=arrange(d1,desc(Avg.Comment))
+  
+  d2=aggregate(df4$'16',by=list(as.character(df4$'1')),FUN=mean)
+  colnames(d2)=c('Page.Total.likes','Avg.like')
+  d2=arrange(d2,desc(Avg.like))
+  
+  d3=aggregate(df4$'17',by=list(as.character(df4$'1')),FUN=mean)
+  colnames(d3)=c('Page.Total.likes','Avg.share')
+  d3=arrange(d3,desc(Avg.share))
+  
+  fig <- plot_ly()
+  fig <- fig %>% add_pie(data = d1[1:10,], labels = ~Page.Total.likes, values = ~Avg.Comment,
+                         name = "Avg.comment", domain = list(x = c(0, 0.4), y = c(0.4, 1)))
+  fig <- fig %>% add_pie(data = d2[1:10,], labels = ~Page.Total.likes, values = ~Avg.like,
+                         name = "Avg,likes", domain = list(x = c(0.6, 1), y = c(0.4, 1)))
+  fig <- fig %>% add_pie(data = d3[1:10,], labels = ~Page.Total.likes, values = ~Avg.share,
+                         name = "Avg.share", domain = list(x = c(0.25, 0.75), y = c(0, 0.6)))
+  fig <- fig %>% layout(title = "Top 10 Page.Total.Likes W.r.t. comment,like,share", showlegend = F,
+                        xaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE),
+                        yaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE))
+  
+  fig
+}
+
+```
+1)without removing outliers
+```{r}
+Sub_pie(DataN)
+```
+Interpretation:
+1]We see that who likes  page '92507' they having maximum percentages of like,share & comment.This shows that there is more active user in these page.
+
+2)After removing outliers
+```{r}
+Sub_pie(DataM)
+```
+Interpretation:
+1]we see that who likes page '131728' they do  likes and comment maximum percentages of content.
+2]This shows that there is active users in that page
+3]We see that who likes page '92293' they shares  maximum percentages of content.
+
+11)we check which page having more traffic with respect to post type and total impression.
+Here first 
+```{r}
+bub_plot=function(d='DataFrame'){
+  df5=d
+  dfagg=aggregate(df5$'3', list(df5$'2',df5$'1'), mean)
+  colnames(dfagg)=c('Post.Type','Page.Total.likes','Avg.Lifetime.Post.Total.Impressions')
+  dfagg=arrange(dfagg,desc(Avg.Lifetime.Post.Total.Impressions))
+  dfagg$Post.Type=factor(dfagg$Post.Type)
+  fig <- plot_ly(dfagg, x = ~Page.Total.likes, y = ~Avg.Lifetime.Post.Total.Impressions, 
+                 type = 'scatter', mode = 'markers', 
+                 size = ~(Avg.Lifetime.Post.Total.Impressions), color = ~Post.Type, 
+                 colors = 'Paired',
+                 #Choosing the range of the bubbles' sizes:
+                 sizes = c(10, 50),
+                 marker = list(opacity = 0.6, sizemode = 'diameter'),
+                 hoverinfo = 'text',
+                 text = ~paste('Post.Type:',Post.Type, '<br>Avg.Lifetime.Post.Total.Impressions:', Avg.Lifetime.Post.Total.Impressions,
+                               '<br>Page.Total.likes:',Page.Total.likes))
+  fig <- fig %>% layout(title = 'Page.Total.likes Vs Avg.Lifetime.Post.Total.Impressions',
+                        xaxis = list(showgrid = FALSE),
+                        yaxis = list(showgrid = FALSE),
+                        showlegend = TRUE)
+  
+  fig
+  
+}
+
+```
+1)With outlier
+```{r}
+ss1=subset(DataN1,select=c(1,2,9))
+colnames(ss1)=c('1','2','3')
+options(warn=-1)  #to ignore warnings
+bub_plot(ss1)
+options(warn=-1)  #to ignore warnings
+```
+Interpretation:
+1]We see that who likes page '92507' having higest total impression of post type 'Photo'.Hence we say that maximum traffic is gnerated in this pages in presence of post type 'Photo'.
+2]We see that who likes page '126424' having higest total impression of post type 'Video'.Hence we say that maximum traffic is gnerated in this pages in presence of post type 'Video'.
+3]We see that who likes page '136013' having higest total impression of post type 'Link'.Hence we say that maximum traffic is gnerated in this pages in presence of post type 'Link'.
+4]We see that who likes page '135713' having higest total impression of post type 'Status'.Hence we say that maximum traffic is gnerated in this pages in presence of post type 'Status'.
+
+2)After removing outlier
+```{r}
+DataM['Type']=0
+for (i in 1:nrow(DataM)) {
+  if(DataM$'19'[i]==1){
+    DataM$Type[i]='Link'
+  }
+  if(DataM$'19'[i]==2){
+    DataM$Type[i]='Photo'
+  }
+  if(DataM$'19'[i]==3){
+    DataM$Type[i]='Status'
+  }
+  if(DataM$'19'[i]==4){
+    DataM$Type[i]='Video'
+  }
+}
+
+ss2=subset(DataM,select=c(1,Type,8))
+options(warn=-1)  #to ignore warnings
+colnames(ss2)=c('1','2','3')
+bub_plot(ss2)
+options(warn=-1)  #to ignore warnings
+
+```
+Interpretation:
+1]We see that who likes page '98828' having higest total impression of post type 'Photo'.Hence we say that maximum traffic is gnerated in this pages in presence of post type 'Photo'.
+2]We see that who likes page '138329' having higest total impression of post type 'Video'.Hence we say that maximum traffic is gnerated in this pages in presence of post type 'Video'.
+3]We see that who likes page '137177' having higest total impression of post type 'Link'.Hence we say that maximum traffic is gnerated in this pages in presence of post type 'Link'.
+4]We see that who likes page '113028' having higest total impression of post type 'Status'.Hence we say that maximum traffic is gnerated in this pages in presence of post type 'Status'.
+
+# Conclusion:
+From All these analysis we finally conclude that,
+
+1)Become Social media analyst our aim is to find out best strategies which will helps to build powerful business and which will helps to increase our sales and Brand popularity.  
+
+2)we see that maximum interaction is in the month of July and September and on the day of Tuesday, wednesday and Sunday at 5.Hence to reach maximum interaction we may post our 'Ad' in the month of July or September on any weekday of Tuesday or Wednesday or Sunday at 5. 
+
+3)we see that maximum Total Impression is in the month of February and March.This means that more users are is in the month of February and March.Hence to get more impression i.e. to know more peoples about you product you may post your 'Ad' in this month also.  
+
+4)we see that maximum peoples are interested to see the status follwed by video and photos.Hence we may post our 'Ad' in form of Status or Video.But we see that maximum interaction is for video and photos type of content.Hence we may try for the video or status also based on business goal.we also see that maximum impression is for video type post.Hence to 
+know more peoples about you product you may post your 'Ad' in the form of video.  
+
+5)Here we are doing two kind of analysis: 
+  i)considering outliers are as special case.                            
+  ii)without outliers.   
+  
+6)In First kind of analysis we conclude that page '92507' is best with respect to total interaction.Hence we say that to reach maximum people we use this page.To get maximum public opinion we may use page '92507'.And we aslo see that this page are more interested towards the photos type post.If commpany is planning to post photos then they may be use this page.And to post video he may use page '277100'.                           
+7)In second kind of Analysis page '126345' is best with respect to total post consumption.Hence we say that this page is more useful to viral our 'Ad' or trend our 'Ad'.In these case we also see that page '131728' is having more comment.we use this also to get public opinion.If company is planning to post 'Link' then they may use page '137177' to get maximum Post Impression.and also use page '92828' to post photos.
+
+8)Lastly we say that page 92507,277100,126345,131728 and 137177 are more useful for marketing purpose.
